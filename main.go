@@ -91,11 +91,12 @@ func (tree AVL) rotateLeft(axis node) {
 
 }
 
-func (tree AVL) getFailsNode(startNode node) (failsNode node) {
+func (tree AVL) getFailsNode(startNode node) (failsNode node, isFound bool) {
 	foucsNode := startNode
 	var updateFlagL, updateFlagR bool
 	var newHeight int
 
+	isFound = false
 	for {
 		if foucsNode.Parent == nil {
 			break
@@ -125,10 +126,40 @@ func (tree AVL) getFailsNode(startNode node) (failsNode node) {
 		// 条件を満たさない点を発見したら終了
 		if abs(foucsNode.heightLeft-foucsNode.heightRight) > 1 {
 			failsNode = failsNode
+			isFound = true
 			break
 		}
 	}
 	return
+}
+
+func (tree AVL) solveTree(failsNode node) {
+
+	// 条件に合わなくなった点がrootであるかどうか
+	rootFlag := failsNode.Parent != nil
+
+	var failsChild node // failsNodeのうち高い方の部分木
+	if failsNode.heightLeft > failsNode.heightRight {
+		failsChild = *failsNode.ChildLeft
+		if failsChild.heightLeft >= failsChild.heightRight {
+			tree.rotateRight(failsNode)
+		} else {
+			tree.rotateLeft(failsChild)
+			tree.rotateRight(failsNode)
+		}
+	} else {
+		failsChild = *failsChild.ChildRight
+		if failsChild.heightRight >= failsChild.heightLeft {
+			tree.rotateLeft(failsNode)
+		} else {
+			tree.rotateRight(failsChild)
+			tree.rotateLeft(failsNode)
+		}
+	}
+
+	if rootFlag {
+		tree.root = failsNode.Parent
+	}
 }
 
 func (tree AVL) Insert(x int) bool {
@@ -151,6 +182,12 @@ func (tree AVL) Insert(x int) bool {
 	} else {
 		// xが既に存在している
 		return false
+	}
+
+	// 条件を満たさなくなった点の取得
+	failsNode, isFound := tree.getFailsNode(parentNode)
+	if !isFound {
+		return true
 	}
 
 }
