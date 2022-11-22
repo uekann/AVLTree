@@ -36,13 +36,18 @@ type AVL struct {
 func (tree *AVL) getCloseNode(x int) *node {
 	// xに最も近いnodeを探す
 
+	// rootからの探索
 	searchNode := (*tree).root
+
 	for {
+
+		// 着目してるnodeのLabelよりxが大きい(小さい)かつ右(左)部分木が存在するなら探索を続ける
 		if (searchNode.Label < x) && (searchNode.ChildRight != nil) {
 			searchNode = searchNode.ChildRight
 		} else if (searchNode.Label > x) && (searchNode.ChildLeft != nil) {
 			searchNode = searchNode.ChildLeft
 		} else {
+			// labelとxが一致するか葉に到達したら終了
 			break
 		}
 	}
@@ -65,6 +70,7 @@ func (tree *AVL) Max() int {
 }
 
 func (tree *AVL) rotateRight(axis *node) {
+	// aを起点に時計回りに回転
 	a := axis
 	b := axis.ChildLeft
 	a.ChildLeft = b.ChildRight
@@ -94,6 +100,7 @@ func (tree *AVL) rotateRight(axis *node) {
 }
 
 func (tree *AVL) rotateLeft(axis *node) {
+	// aを起点に反時計回りに回転
 	a := axis
 	b := axis.ChildRight
 	a.ChildRight = b.ChildLeft
@@ -123,9 +130,10 @@ func (tree *AVL) rotateLeft(axis *node) {
 }
 
 func (tree *AVL) getFailsNode(startNode *node) (failsNode *node, isFound bool) {
+	// 部分木の高さを修正しながらAVL木の条件に満たさなくなったnodeを取得する
 	foucsNode := startNode
-	var updateFlagL, updateFlagR bool
-	var newHeight int
+	var updateFlagL, updateFlagR bool // 部分木の高さが更新されたかどうかのフラグ
+	var newHeight int                 // 部分木の新しい高さ
 
 	isFound = false
 	for {
@@ -163,9 +171,12 @@ func (tree *AVL) getFailsNode(startNode *node) (failsNode *node, isFound bool) {
 			break
 		}
 
+		// rootにたどり着いたら終了
 		if foucsNode.Parent == nil {
 			break
 		}
+
+		// 親をたどっていき条件を満たさない点を探索する
 		foucsNode = foucsNode.Parent
 	}
 	return
@@ -180,22 +191,27 @@ func (tree *AVL) solveTree(failsNode *node) {
 	if failsNode.heightLeft > failsNode.heightRight {
 		failsChild = failsNode.ChildLeft
 		if failsChild.heightLeft >= failsChild.heightRight {
+			// 一重回転
 			tree.rotateRight(failsNode)
 		} else {
+			// 二重回転
 			tree.rotateLeft(failsChild)
 			tree.rotateRight(failsNode)
 		}
 	} else {
 		failsChild = failsNode.ChildRight
 		if failsChild.heightRight >= failsChild.heightLeft {
+			// 一重回転
 			tree.rotateLeft(failsNode)
 		} else {
+			// 二重回転
 			tree.rotateRight(failsChild)
 			tree.rotateLeft(failsNode)
 		}
 	}
 
 	if rootFlag {
+		// rootの付け替え
 		tree.root = failsNode.Parent
 	}
 }
@@ -220,11 +236,14 @@ func (tree *AVL) Insert(x int) bool {
 		return false
 	}
 
+	// 追加したnodeの親を起点にAVL木の条件を解決する
 	// 条件を満たさなくなった点の取得
 	failsNode, isFound := tree.getFailsNode(parentNode)
 	if !isFound {
 		return true
 	}
+
+	// 条件の解決
 	tree.solveTree(failsNode)
 	return true
 }
@@ -239,16 +258,23 @@ func (tree *AVL) Delete(x int) bool {
 		return false
 	}
 
+	// タスクをnodeの削除から葉の削除に変える
 	var removeNode *node
 	if deleteNode.ChildLeft != nil {
+		// 削除対象が左部分木を持っている時
+		// 削除位置のnodeのラベルを部分木の最大値に置き換えてその最大値(葉)を削除対象にする
 		leftTree := &AVL{root: deleteNode.ChildLeft}
 		removeNode = leftTree.getCloseNode(x)
 		deleteNode.Label = removeNode.Label
+
 	} else if deleteNode.ChildRight != nil {
+		// 削除対象が右部分木を持っている時
+		// 削除対象のnodeのラベルを部分木の最小値に置き換えてその最小値(葉)を削除対象にする
 		rightTree := &AVL{root: deleteNode.ChildRight}
 		removeNode = rightTree.getCloseNode(x)
 		deleteNode.Label = removeNode.Label
 	} else {
+		// 削除対象が部分木を持たない時(= 削除対象が葉)
 		removeNode = deleteNode
 		if removeNode.Parent == nil {
 			tree.root = nil
@@ -256,6 +282,7 @@ func (tree *AVL) Delete(x int) bool {
 		}
 	}
 
+	// 削除対象の親のnodeからの参照を捨てる
 	parentNode := removeNode.Parent
 	if parentNode.ChildLeft == removeNode {
 		parentNode.ChildLeft = nil
@@ -263,11 +290,14 @@ func (tree *AVL) Delete(x int) bool {
 		parentNode.ChildRight = nil
 	}
 
+	// 削除対象の親を起点にAVL木の条件を解決する
+	// 条件を満たさない点の取得
 	failsNode, isFound := tree.getFailsNode(parentNode)
 	if !isFound {
 		return true
 	}
 
+	// 条件の解決
 	tree.solveTree(failsNode)
 	return true
 }
